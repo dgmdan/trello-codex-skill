@@ -1,6 +1,6 @@
 ---
 name: trello-card-fetch
-description: "Pull a Trello card's title, description, attachments, comments, and metadata so Codex can use the card as a shared working prompt. Trigger when the user asks to load a specific Trello card before changing code, docs, or tickets."
+description: "Fetch a Trello card's metadata or create a new card on a board/list so Codex can operate on the right ticket in the conversation."
 ---
 
 # Trello Card Fetch
@@ -8,14 +8,15 @@ description: "Pull a Trello card's title, description, attachments, comments, an
 ## When to trigger
 - The user says things like “load Trello card ABC123”, “give me the story from Trello”, or “what does the card for this ticket say?” before requesting a new change.
 - The deliverable depends on acceptance criteria, attachments, or discussions stored on a Trello card, and you need that context before acting.
+- The user wants to create a new card (or cards) and place them on a specific board and list before proceeding.
 
 ## Setup
 - Export `TRELLO_API_KEY` so the helper can authenticate requests. Keep that secret in the environment and never commit it.
 - If you run the helper without `TRELLO_TOKEN`, it now stops before reaching Trello and prints an authorization link so you can generate a token yourself; copy the returned token, export it as `TRELLO_TOKEN`, and rerun.
+- Optionally set `TRELLO_AUTH_SCOPE` if your organization requires a scope string other than the default `read,write`. If unset, the helpers default to `read,write` so card creation works.
 - Optionally override `TRELLO_API_BASE_URL` (defaults to `https://api.trello.com/1`) if you proxy Trello traffic.
-- Remember the helper you run is `/Users/danmadere/.codex/skills/trello-card-fetch/scripts/fetch_card.py`.
-- Optionally override `TRELLO_API_BASE_URL` (defaults to `https://api.trello.com/1`) if you proxy Trello traffic.
-- Remember the helper you run is `/Users/danmadere/.codex/skills/trello-card-fetch/scripts/fetch_card.py`.
+- Remember the helper you run for reading cards is `/Users/danmadere/.codex/skills/trello-card-fetch/scripts/fetch_card.py`.
+- Use `/Users/danmadere/.codex/skills/trello-card-fetch/scripts/create_card.py` when you need to create a card on a board/list.
 
 ## Fetch a card
 - Run the helper with the card short link or full ID:
@@ -24,6 +25,16 @@ description: "Pull a Trello card's title, description, attachments, comments, an
   ```
 - The script fetches the card metadata, attachments, and `commentCard` actions so you can capture the full conversation around the work.
 - Use `--format markdown` for a quick summary to paste into chat or `--format json` when you need structured data (for filtering or automation).
+
+## Create a card
+- The helper requires the board short link (or full board ID) and the list name/id where the card should land:
+  ```
+  python /Users/danmadere/.codex/skills/trello-card-fetch/scripts/create_card.py \
+    --board <board> --list "<list>" --name "Card title" [--desc "..."] \
+    [--due <ISO 8601>] [--pos <position>] [--label <label-id> ...] [--member <member-id> ...] \
+    [--url-source <url>] [--format summary|json]
+  ```
+- `--list` accepts the display name (case-insensitive) or the list’s ID. Repeat `--label`/`--member` for multiple assignments, and `--format json` returns the raw card payload once creation succeeds.
 
 ## Use the card context
 - Paste the Markdown summary (or the filtered JSON fields) into the conversation so Codex receives the title, description, most recent comments, attachments, and metadata.

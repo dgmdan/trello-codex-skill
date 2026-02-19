@@ -5,79 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import textwrap
-import urllib.error
-import urllib.parse
-import urllib.request
 from datetime import datetime
 from typing import Any, Dict, Iterable
 
-BASE_URL = os.environ.get("TRELLO_API_BASE_URL", "https://api.trello.com/1").rstrip("/")
-AUTHORIZATION_BASE = "https://trello.com/1/authorize"
-AUTH_SCOPE = "read"
-AUTH_EXPIRATION = "never"
-AUTH_NAME = "Codex Trello Access"
-
-
-class TrelloError(Exception):
-    pass
-
-
-def require_env(var: str) -> str:
-    value = os.getenv(var)
-    if not value:
-        raise TrelloError(f"{var} is not configured. Export it before running the helper.")
-    return value
-
-
-def authorization_url(key: str) -> str:
-    params = {
-        "key": key,
-        "scope": AUTH_SCOPE,
-        "expiration": AUTH_EXPIRATION,
-        "name": AUTH_NAME,
-        "response_type": "token",
-    }
-    return f"{AUTHORIZATION_BASE}?{urllib.parse.urlencode(params)}"
-
-
-def authorization_instructions(key: str) -> str:
-    url = authorization_url(key)
-    return (
-        " To grant access, open the following link while signed in as a board member, "
-        "approve the addon, and set TRELLO_TOKEN to the token Trello returns: "
-        f"{url}"
-    )
-
-
-def trello_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    key = require_env("TRELLO_API_KEY")
-    token = os.getenv("TRELLO_TOKEN")
-    if not token:
-        raise TrelloError(
-            "TRELLO_TOKEN is not configured. The helper can build an authorization link "
-            "so you can create one." + authorization_instructions(key)
-        )
-    params = params.copy()
-    params["key"] = key
-    params["token"] = token
-    query = urllib.parse.urlencode(params, doseq=True)
-    url = f"{BASE_URL}{path}?{query}"
-    request = urllib.request.Request(url)
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as err:
-        instructions = ""
-        if err.code in {401, 403}:
-            instructions = authorization_instructions(key)
-        raise TrelloError(
-            f"HTTP {err.code} calling {url}: {err.reason}.{instructions}"
-        ) from err
-    except urllib.error.URLError as err:
-        raise TrelloError(f"Unable to reach Trello: {err.reason}") from err
+from trello_client import TrelloError, trello_get
 
 
 def human_readable_bytes(num: int) -> str:
