@@ -41,5 +41,10 @@ description: "Fetch a Trello card's metadata or create a new card on a board/lis
 - Identify which attachments should influence the task (design assets, specs, spreadsheets) and note whether comments are approvals, clarifications, or blockers.
 - Tie card context back to the change: “Follow the acceptance criteria in this card’s description” or “Use the attachments when drafting the release note.”
 
+## Update a card
+- Run `/Users/danmadere/.codex/skills/trello-card-fetch/scripts/manage_card.py` when you need to leave a comment, upload a new attachment, or mark a card as complete before continuing work.
+- Pass `--card` with the card short link/ID and one or more of the following options: `--comment "<text>"`, `--attachment /path/to/file`, or `--complete` to flip `dueComplete` to true.
+- You can repeat `--attachment` for multiple files and combine comment/attachment/complete operations in a single invocation; the script prints a brief recap once each action succeeds.
+
 ## References
 - See `references/api-cards.md` for the Trello card endpoint, authentication, supported query parameters, and the fields the helper requests.

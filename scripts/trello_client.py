@@ -8,7 +8,8 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Optional
+import uuid
+from typing import Any, Dict, Optional, Tuple
 
 BASE_URL = os.environ.get("TRELLO_API_BASE_URL", "https://api.trello.com/1").rstrip("/")
 AUTHORIZATION_BASE = "https://trello.com/1/authorize"
@@ -68,7 +69,36 @@ def build_auth_params(extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     return auth
 
 
-def trello_request(path: str, params: Optional[Dict[str, Any]] = None, method: str = "GET") -> Any:
+def _encode_multipart_formdata(
+    fields: Dict[str, Any], files: Dict[str, Tuple[str, bytes, str]]
+) -> Tuple[str, bytes]:
+    boundary = uuid.uuid4().hex
+    buffer = bytearray()
+    for name, value in fields.items():
+        buffer.extend(f"--{boundary}\r\n".encode())
+        buffer.extend(f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode())
+        buffer.extend(str(value).encode())
+        buffer.extend(b"\r\n")
+    for name, (filename, data, content_type) in files.items():
+        buffer.extend(f"--{boundary}\r\n".encode())
+        buffer.extend(
+            (
+                f'Content-Disposition: form-data; name="{name}"; filename="{filename}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n"
+            ).encode()
+        )
+        buffer.extend(data)
+        buffer.extend(b"\r\n")
+    buffer.extend(f"--{boundary}--\r\n".encode())
+    return boundary, bytes(buffer)
+
+
+def trello_request(
+    path: str,
+    params: Optional[Dict[str, Any]] = None,
+    method: str = "GET",
+    files: Optional[Dict[str, Tuple[str, bytes, str]]] = None,
+) -> Any:
     method = method.upper()
     auth_params = build_auth_params(params)
     url = f"{BASE_URL}{path}"
@@ -77,9 +107,14 @@ def trello_request(path: str, params: Optional[Dict[str, Any]] = None, method: s
         url = f"{url}?{query}"
         request = urllib.request.Request(url, method=method)
     else:
-        body = urllib.parse.urlencode(auth_params, doseq=True).encode()
-        request = urllib.request.Request(url, data=body, method=method)
-        request.add_header("Content-Type", "application/x-www-form-urlencoded")
+        if files:
+            boundary, body = _encode_multipart_formdata(auth_params, files)
+            request = urllib.request.Request(url, data=body, method=method)
+            request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+        else:
+            body = urllib.parse.urlencode(auth_params, doseq=True).encode()
+            request = urllib.request.Request(url, data=body, method=method)
+            request.add_header("Content-Type", "application/x-www-form-urlencoded")
 
     try:
         with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
@@ -99,5 +134,17 @@ def trello_get(path: str, params: Optional[Dict[str, Any]] = None) -> Any:
     return trello_request(path, params=params, method="GET")
 
 
-def trello_post(path: str, params: Optional[Dict[str, Any]] = None) -> Any:
-    return trello_request(path, params=params, method="POST")
+def trello_post(
+    path: str,
+    params: Optional[Dict[str, Any]] = None,
+    files: Optional[Dict[str, Tuple[str, bytes, str]]] = None,
+) -> Any:
+    return trello_request(path, params=params, method="POST", files=files)
+
+
+def trello_put(
+    path: str,
+    params: Optional[Dict[str, Any]] = None,
+    files: Optional[Dict[str, Tuple[str, bytes, str]]] = None,
+) -> Any:
+    return trello_request(path, params=params, method="PUT", files=files)

@@ -6,6 +6,7 @@ This Codex skill is packaged as `dgmdan/trello-codex-skill`. It runs a helper sc
 - Fetches card metadata plus `commentCard` actions so you can read the conversation around the work.
 - Supports Markdown or JSON output for easy pasting or automation.
 - Honors optional overrides such as `TRELLO_API_BASE_URL` when you proxy Trello traffic.
+- Adds comments, attachments, or completion marks so you can keep the Trello card in sync with the code changes.
 - Creates new cards by board and list, returning the new ID and short link so you can confirm placement.
 
 ## Prerequisites
@@ -48,3 +49,15 @@ python $CODEX_HOME/skills/trello-card-fetch/scripts/create_card.py \
 ```
 
 The new helper requires the same `TRELLO_API_KEY`/`TRELLO_TOKEN` environment that the fetch script uses. The `--list` argument accepts either the Trello list ID or its display name (case-insensitive), and you can repeat `--label` or `--member` to attach multiple IDs. Choose `--format json` when you want the raw card payload and follow-on automation.
+
+### Update a card
+
+```
+python $CODEX_HOME/skills/trello-card-fetch/scripts/manage_card.py \
+  --card <card-shortlink-or-id> \
+  [--comment "New clarification"] \
+  [--attachment /path/to/file.png] \
+  [--complete]
+```
+
+Use this helper to leave new comments, upload attachments, or mark a card’s `dueComplete` flag. You can mix options (e.g., comment plus attachment) in one invocation and repeat `--attachment` for multiple files. The script prints which actions were performed when it finishes.
